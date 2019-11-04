@@ -128,7 +128,10 @@ target_compile_definitions(valhalla
 
 target_compile_options(valhalla
   PUBLIC
-    ${libvalhalla_compile_options})
+    ${libvalhalla_compile_options}
+  PRIVATE
+    -Wall -Wextra -Wpedantic -Werror
+  )
 
 target_include_directories(valhalla
   PUBLIC

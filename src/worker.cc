@@ -1216,7 +1216,7 @@ worker_t::result_t to_response(const baldr::json::ArrayPtr& array,
     stream << ')';
   }
 
-  worker_t::result_t result{false};
+  worker_t::result_t result{false, std::list<std::string>(), ""};
   http_response_t response(200, "OK", stream.str(),
                            headers_t{CORS, request.options().has_jsonp() ? JS_MIME : JSON_MIME});
   response.from_info(request_info);
@@ -1236,7 +1236,7 @@ to_response(const baldr::json::MapPtr& map, http_request_info_t& request_info, c
     stream << ')';
   }
 
-  worker_t::result_t result{false};
+  worker_t::result_t result{false, std::list<std::string>(), ""};
   http_response_t response(200, "OK", stream.str(),
                            headers_t{CORS, request.options().has_jsonp() ? JS_MIME : JSON_MIME});
   response.from_info(request_info);
@@ -1256,7 +1256,7 @@ to_response_json(const std::string& json, http_request_info_t& request_info, con
     stream << ')';
   }
 
-  worker_t::result_t result{false};
+  worker_t::result_t result{false, std::list<std::string>(), ""};
   http_response_t response(200, "OK", stream.str(),
                            headers_t{CORS, request.options().has_jsonp() ? JS_MIME : JSON_MIME});
   response.from_info(request_info);
@@ -1266,7 +1266,7 @@ to_response_json(const std::string& json, http_request_info_t& request_info, con
 
 worker_t::result_t
 to_response_xml(const std::string& xml, http_request_info_t& request_info, const Api& request) {
-  worker_t::result_t result{false};
+  worker_t::result_t result{false, std::list<std::string>(), ""};
   http_response_t response(200, "OK", xml, headers_t{CORS, GPX_MIME, ATTACHMENT});
   response.from_info(request_info);
   result.messages.emplace_back(response.to_string());
@@ -1281,6 +1281,6 @@ service_worker_t::~service_worker_t() {
 }
 void service_worker_t::set_interrupt(const std::function<void()>& interrupt_function) {
   interrupt = &interrupt_function;
-};
+}
 
 } // namespace valhalla
