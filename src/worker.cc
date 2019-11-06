@@ -567,7 +567,10 @@ void from_json(rapidjson::Document& doc, Options& options) {
 
   // Begin time for timestamps when entered given durations/delta times (defaults to 0)
   auto t = rapidjson::get_optional<unsigned int>(doc, "/begin_time");
-  double begin_time = (t) ? begin_time = *t : 0.0;
+  double begin_time = 0.0;
+  if (t) {
+    begin_time = *t;
+  }
 
   // Use durations (per shape point pair) to set time
   auto durations = rapidjson::get_optional<rapidjson::Value::ConstArray>(doc, "/durations");
@@ -1265,7 +1268,8 @@ to_response_json(const std::string& json, http_request_info_t& request_info, con
 }
 
 worker_t::result_t
-to_response_xml(const std::string& xml, http_request_info_t& request_info, const Api& _request) {
+to_response_xml(const std::string& xml, http_request_info_t& request_info, const Api& request) {
+  (void)(request); // Unused variable
   worker_t::result_t result{false, std::list<std::string>(), ""};
   http_response_t response(200, "OK", xml, headers_t{CORS, GPX_MIME, ATTACHMENT});
   response.from_info(request_info);
