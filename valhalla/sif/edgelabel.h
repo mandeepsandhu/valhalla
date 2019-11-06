@@ -28,7 +28,7 @@ public:
    * TODO - without memset it warns of uninitialized data members
    */
   EdgeLabel() {
-    //memset(this, 0, sizeof(EdgeLabel));
+    // memset(this, 0, sizeof(EdgeLabel));
   }
 
   /**
@@ -357,7 +357,7 @@ class BDEdgeLabel : public EdgeLabel {
 public:
   // Default constructor
   BDEdgeLabel() {
-    //memset(this, 0, sizeof(BDEdgeLabel));
+    // memset(this, 0, sizeof(BDEdgeLabel));
   }
 
   /**
@@ -384,7 +384,8 @@ public:
               const sif::TravelMode mode,
               const sif::Cost& tc,
               const bool not_thru_pruning)
-      : EdgeLabel(predecessor, edgeid, edge, cost, sortcost, dist, mode, 0), opp_edgeid_(oppedgeid), not_thru_pruning_(not_thru_pruning), transition_cost_(tc) {
+      : EdgeLabel(predecessor, edgeid, edge, cost, sortcost, dist, mode, 0), opp_edgeid_(oppedgeid),
+        not_thru_pruning_(not_thru_pruning), transition_cost_(tc) {
   }
 
   /**
