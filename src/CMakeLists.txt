@@ -130,7 +130,8 @@ target_compile_options(valhalla
   PUBLIC
     ${libvalhalla_compile_options}
   PRIVATE
-    -Wall -Wextra -Wpedantic -Werror
+    -Wall -Wextra -Werror
+    #-Wall -Wextra -Wpedantic -Werror
   )
 
 target_include_directories(valhalla
