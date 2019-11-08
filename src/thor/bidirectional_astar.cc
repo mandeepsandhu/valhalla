@@ -252,7 +252,8 @@ inline bool BidirectionalAStar::ExpandForwardInner(GraphReader& graphreader,
   if (meta.edge_status->set() == EdgeSet::kPermanent) {
     return true; // This is an edge we _could_ have expanded, so return true
   }
-  if (!costing_->Allowed(meta.edge, pred, tile, meta.edge_id, 0, 0) ||
+  bool has_time_restrictions = false;
+  if (!costing_->Allowed(meta.edge, pred, tile, meta.edge_id, 0, 0, has_time_restrictions) ||
       costing_->Restricted(meta.edge, pred, edgelabels_forward_, tile, meta.edge_id, true)) {
     return false;
   }
@@ -270,6 +271,7 @@ inline bool BidirectionalAStar::ExpandForwardInner(GraphReader& graphreader,
       float newsortcost = lab.sortcost() - (lab.cost().cost - newcost.cost);
       adjacencylist_forward_->decrease(meta.edge_status->index(), newsortcost);
       lab.Update(pred_idx, newcost, newsortcost, tc);
+      lab.set_has_time_restriction(has_time_restrictions);
     }
     return true; // Returning true since this means we approved the edge
   }
@@ -292,7 +294,8 @@ inline bool BidirectionalAStar::ExpandForwardInner(GraphReader& graphreader,
   uint32_t idx = edgelabels_forward_.size();
   edgelabels_forward_.emplace_back(pred_idx, meta.edge_id, opp_edge_id, meta.edge, newcost, sortcost,
                                    dist, mode_, tc,
-                                   (pred.not_thru_pruning() || !meta.edge->not_thru()));
+                                   (pred.not_thru_pruning() || !meta.edge->not_thru()),
+                                   has_time_restrictions);
 
   adjacencylist_forward_->add(idx);
   *meta.edge_status = {EdgeSet::kTemporary, idx};
@@ -440,7 +443,9 @@ inline bool BidirectionalAStar::ExpandReverseInner(GraphReader& graphreader,
 
   // Skip this edge if no access is allowed (based on costing method)
   // or if a complex restriction prevents transition onto this edge.
-  if (!costing_->AllowedReverse(meta.edge, pred, opp_edge, t2, opp_edge_id, 0, 0) ||
+  bool has_time_restrictions = false;
+  if (!costing_->AllowedReverse(meta.edge, pred, opp_edge, t2, opp_edge_id, 0, 0,
+                                has_time_restrictions) ||
       costing_->Restricted(meta.edge, pred, edgelabels_reverse_, tile, meta.edge_id, false)) {
     return false;
   }
@@ -461,6 +466,7 @@ inline bool BidirectionalAStar::ExpandReverseInner(GraphReader& graphreader,
       float newsortcost = lab.sortcost() - (lab.cost().cost - newcost.cost);
       adjacencylist_reverse_->decrease(meta.edge_status->index(), newsortcost);
       lab.Update(pred_idx, newcost, newsortcost, tc);
+      lab.set_has_time_restriction(has_time_restrictions);
     }
     return true; // Returning true since this means we approved the edge
   }
@@ -475,7 +481,8 @@ inline bool BidirectionalAStar::ExpandReverseInner(GraphReader& graphreader,
   uint32_t idx = edgelabels_reverse_.size();
   edgelabels_reverse_.emplace_back(pred_idx, meta.edge_id, opp_edge_id, meta.edge, newcost, sortcost,
                                    dist, mode_, tc,
-                                   (pred.not_thru_pruning() || !meta.edge->not_thru()));
+                                   (pred.not_thru_pruning() || !meta.edge->not_thru()),
+                                   has_time_restrictions);
 
   adjacencylist_reverse_->add(idx);
   *meta.edge_status = {EdgeSet::kTemporary, idx};

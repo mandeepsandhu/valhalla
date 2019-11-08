@@ -308,7 +308,8 @@ void CostMatrix::ForwardSearch(const uint32_t index, const uint32_t n, GraphRead
 
       // Skip this edge if no access is allowed (based on costing method)
       // or if a complex restriction prevents transition onto this edge.
-      if (!costing_->Allowed(directededge, pred, tile, edgeid, 0, 0) ||
+      bool is_time_restricted = false;
+      if (!costing_->Allowed(directededge, pred, tile, edgeid, 0, 0, is_time_restricted) ||
           costing_->Restricted(directededge, pred, edgelabels, tile, edgeid, true)) {
         continue;
       }
@@ -578,7 +579,9 @@ void CostMatrix::BackwardSearch(const uint32_t index, GraphReader& graphreader) 
       // Skip this edge if no access is allowed (based on costing method)
       // or if a complex restriction prevents transition onto this edge.
       const DirectedEdge* opp_edge = t2->directededge(oppedge);
-      if (!costing_->AllowedReverse(directededge, pred, opp_edge, t2, oppedge, 0, 0) ||
+      bool has_time_restrictions = false;
+      if (!costing_->AllowedReverse(directededge, pred, opp_edge, t2, oppedge, 0, 0,
+                                    has_time_restrictions) ||
           costing_->Restricted(directededge, pred, edgelabels, tile, edgeid, false)) {
         continue;
       }
@@ -597,6 +600,7 @@ void CostMatrix::BackwardSearch(const uint32_t index, GraphReader& graphreader) 
           adj->decrease(es->index(), newcost.cost);
           lab.Update(pred_idx, newcost, newcost.cost, tc,
                      pred.path_distance() + directededge->length());
+          lab.set_has_time_restriction(has_time_restrictions);
         }
         continue;
       }
@@ -606,7 +610,8 @@ void CostMatrix::BackwardSearch(const uint32_t index, GraphReader& graphreader) 
       *es = {EdgeSet::kTemporary, idx};
       edgelabels.emplace_back(pred_idx, edgeid, oppedge, directededge, newcost, mode_, tc,
                               pred.path_distance() + directededge->length(),
-                              (pred.not_thru_pruning() || !directededge->not_thru()));
+                              (pred.not_thru_pruning() || !directededge->not_thru()),
+                              has_time_restrictions);
       adj->add(idx);
 
       // Add to the list of targets that have reached this edge

@@ -243,13 +243,17 @@ void Isochrone::ExpandForward(GraphReader& graphreader,
     if (has_date_time_) {
       // With date time we check time dependent restrictions and access as well as get
       // traffic based speed if it exists
-      if (!costing_->Allowed(directededge, pred, tile, edgeid, localtime, nodeinfo->timezone()) ||
+      bool is_time_restricted = false;
+      if (!costing_->Allowed(directededge, pred, tile, edgeid, localtime, nodeinfo->timezone(),
+                             is_time_restricted) ||
           costing_->Restricted(directededge, pred, edgelabels_, tile, edgeid, true, localtime,
                                nodeinfo->timezone())) {
         continue;
       }
     } else {
-      if (!costing_->Allowed(directededge, pred, tile, edgeid, 0, 0) ||
+      // TODO merge these two branches
+      bool is_time_restricted = false;
+      if (!costing_->Allowed(directededge, pred, tile, edgeid, 0, 0, is_time_restricted) ||
           costing_->Restricted(directededge, pred, edgelabels_, tile, edgeid, true)) {
         continue;
       }
@@ -429,17 +433,19 @@ void Isochrone::ExpandReverse(GraphReader& graphreader,
     const DirectedEdge* opp_edge = t2->directededge(oppedge);
 
     // Check if the edge is allowed or if a restriction occurs. Get the edge speed.
+    bool has_time_restrictions = false;
     if (has_date_time_) {
       // With date time we check time dependent restrictions and access as well as get
       // traffic based speed if it exists
       if (!costing_->AllowedReverse(directededge, pred, opp_edge, t2, oppedge, localtime,
-                                    nodeinfo->timezone()) ||
+                                    nodeinfo->timezone(), has_time_restrictions) ||
           costing_->Restricted(directededge, pred, bdedgelabels_, tile, edgeid, false, localtime,
                                nodeinfo->timezone())) {
         continue;
       }
     } else {
-      if (!costing_->AllowedReverse(directededge, pred, opp_edge, t2, oppedge, 0, 0) ||
+      if (!costing_->AllowedReverse(directededge, pred, opp_edge, t2, oppedge, 0, 0,
+                                    has_time_restrictions) ||
           costing_->Restricted(directededge, pred, bdedgelabels_, tile, edgeid, false)) {
         continue;
       }
@@ -462,6 +468,7 @@ void Isochrone::ExpandReverse(GraphReader& graphreader,
         float newsortcost = lab.sortcost() - (lab.cost().cost - newcost.cost);
         adjacencylist_->decrease(es->index(), newsortcost);
         lab.Update(pred_idx, newcost, newsortcost, tc);
+        lab.set_has_time_restriction(has_time_restrictions);
       }
       continue;
     }
@@ -470,7 +477,7 @@ void Isochrone::ExpandReverse(GraphReader& graphreader,
     uint32_t idx = bdedgelabels_.size();
     *es = {EdgeSet::kTemporary, idx};
     bdedgelabels_.emplace_back(pred_idx, edgeid, oppedge, directededge, newcost, newcost.cost, 0.0f,
-                               mode_, tc, false);
+                               mode_, tc, false, has_time_restrictions);
     adjacencylist_->add(idx);
   }
 
@@ -684,7 +691,8 @@ bool Isochrone::ExpandForwardMM(GraphReader& graphreader,
     uint32_t blockid = 0;
     if (directededge->IsTransitLine()) {
       // Check if transit costing allows this edge
-      if (!tc->Allowed(directededge, pred, tile, edgeid, 0, 0)) {
+      bool is_time_restricted = false;
+      if (!tc->Allowed(directededge, pred, tile, edgeid, 0, 0, is_time_restricted)) {
         continue;
       }
 
@@ -759,8 +767,9 @@ bool Isochrone::ExpandForwardMM(GraphReader& graphreader,
       // Regular edge - use the appropriate costing and check if access
       // is allowed. If mode is pedestrian this will validate walking
       // distance has not been exceeded.
-      if (!mode_costing[static_cast<uint32_t>(mode_)]->Allowed(directededge, pred, tile, edgeid, 0,
-                                                               0)) {
+      bool is_time_restricted = false;
+      if (!mode_costing[static_cast<uint32_t>(mode_)]->Allowed(directededge, pred, tile, edgeid, 0, 0,
+                                                               is_time_restricted)) {
         continue;
       }
 

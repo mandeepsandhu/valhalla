@@ -358,7 +358,8 @@ bool MultiModalPathAlgorithm::ExpandForward(GraphReader& graphreader,
     uint32_t blockid = 0;
     if (directededge->IsTransitLine()) {
       // Check if transit costing allows this edge
-      if (!tc->Allowed(directededge, pred, tile, edgeid, 0, 0)) {
+      bool is_time_restricted;
+      if (!tc->Allowed(directededge, pred, tile, edgeid, 0, 0, is_time_restricted)) {
         continue;
       }
       // check if excluded.
@@ -433,8 +434,9 @@ bool MultiModalPathAlgorithm::ExpandForward(GraphReader& graphreader,
       // Regular edge - use the appropriate costing and check if access
       // is allowed. If mode is pedestrian this will validate walking
       // distance has not been exceeded.
-      if (!mode_costing[static_cast<uint32_t>(mode_)]->Allowed(directededge, pred, tile, edgeid, 0,
-                                                               0)) {
+      bool is_time_restricted;
+      if (!mode_costing[static_cast<uint32_t>(mode_)]->Allowed(directededge, pred, tile, edgeid, 0, 0,
+                                                               is_time_restricted)) {
         continue;
       }
 
@@ -724,8 +726,9 @@ bool MultiModalPathAlgorithm::ExpandFromNode(baldr::GraphReader& graphreader,
   for (uint32_t i = 0; i < nodeinfo->edge_count(); i++, directededge++, ++edgeid, ++es) {
     // Skip this edge if permanently labeled (best path already found to this directed edge) or
     // access is not allowed for this mode.
+    bool is_time_restricted;
     if (es->set() == EdgeSet::kPermanent ||
-        !costing->Allowed(directededge, pred, tile, edgeid, 0, 0)) {
+        !costing->Allowed(directededge, pred, tile, edgeid, 0, 0, is_time_restricted)) {
       continue;
     }
 
