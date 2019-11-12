@@ -90,6 +90,7 @@ protected:
   std::unordered_map<size_t, std::pair<RouteDiscontinuity, RouteDiscontinuity>>
       m_temp_route_discontinuities;
   std::unordered_map<baldr::GraphId, baldr::GraphId> m_temp_disconnected_edges;
+  std::vector<std::vector<PathInfo>> m_temp_disjoint_edge_groups;
   std::vector<PathInfo> m_temp_path_edges;
   std::vector<std::tuple<float, float, std::vector<thor::MatchResult>>> m_map_match_results;
   sif::CostFactory<sif::DynamicCost> factory;
