@@ -40,10 +40,10 @@ std::string from_restriction_file = "test_from_complex_restrictions_whitelion.bi
 std::string to_restriction_file = "test_to_complex_restrictions_whitelion.bin";
 std::string bss_file = "test_bss_nodes_whitelion.bin";
 
-boost::property_tree::ptree get_conf() {
+boost::property_tree::ptree get_conf(const char* tiles) {
   std::stringstream ss;
   ss << R"({
-      "mjolnir":{"tile_dir":"test/data/whitelion_tiles", "concurrency": 1},
+      "mjolnir":{"tile_dir":"test/data/)" << tiles << R"(", "concurrency": 1},
       "loki":{
         "actions":["route"],
         "logging":{"long_request": 100},
@@ -99,13 +99,8 @@ struct route_tester {
   odin_worker_t odin_worker;
 };
 
-void build_tiles(const boost::property_tree::ptree& conf) {
-  valhalla::mjolnir::build_tile_set(conf,
-                                    {VALHALLA_SOURCE_DIR "test/data/whitelion_bristol_uk.osm.pbf"});
-}
-
 void test_oneway() {
-  auto conf = get_conf();
+  auto conf = get_conf("whitelion_tiles");
   route_tester tester(conf);
   // Test onewayness with this route - oneway works, South-West to North-East
   std::string request =
@@ -143,7 +138,7 @@ void test_oneway() {
 }
 
 void test_oneway_wrong_way() {
-  auto conf = get_conf();
+  auto conf = get_conf("whitelion_tiles");
   route_tester tester(conf);
   // Test onewayness with this route - oneway wrong way, North-east to South-West
   // Should produce no-route
@@ -160,10 +155,62 @@ void test_oneway_wrong_way() {
 }
 
 void test_deadend() {
-  auto conf = get_conf();
+  auto conf = get_conf("whitelion_tiles");
   route_tester tester(conf);
   std::string request =
       R"({"locations":[{"lat":51.45562646682483,"lon":-2.5952598452568054},{"lat":51.455143447135974,"lon":-2.5958767533302307}],"costing":"auto"})";
+
+  auto response = tester.test(request);
+
+  const auto& legs = response.trip().routes(0).legs();
+  const auto& directions = response.directions().routes(0).legs();
+
+  if (legs.size() != 1) {
+    throw std::logic_error("Should have 1 leg");
+  }
+
+  std::vector<std::string> names;
+  std::string uturn_street;
+
+  for (const auto& d : directions) {
+    for (const auto& m : d.maneuver()) {
+      std::string name;
+      for (const auto& n : m.street_name()) {
+        name += n.value() + " ";
+      }
+      if (!name.empty()) {
+        name.pop_back();
+      }
+      bool is_uturn = false;
+      if (m.type() == DirectionsLeg_Maneuver_Type_kUturnRight ||
+          m.type() == DirectionsLeg_Maneuver_Type_kUturnLeft) {
+        is_uturn = true;
+        uturn_street = name;
+      }
+      names.push_back(name);
+    }
+  }
+
+  auto correct_route =
+      std::vector<std::string>{"Bell Lane",   "Small Street",
+                               "Quay Street", // The u-turn on Quay Street is optimized away
+                               "Quay Street", "Small Street", "", ""};
+  if (names != correct_route) {
+    throw std::logic_error("Incorrect route, got: \n" + boost::algorithm::join(names, ", ") +
+                           ", expected: \n" + boost::algorithm::join(correct_route, ", "));
+  }
+  if (uturn_street != "Quay Street") {
+    throw std::logic_error("We did not find the expected u-turn");
+  }
+}
+void test_time_restricted_road() {
+  // Try routing over "Via Montebello" in Rome which is a time restricted road
+  // We should receive a route for a time-independent query but have the response
+  // note that it is time restricted
+  auto conf = get_conf("roma_tiles");
+  route_tester tester(conf);
+  std::string request =
+      R"({"locations":[{"lat":41.90592,"lon":12.50070},{"lat":41.90477,"lon":12.49914}],"costing":"auto"})";
 
   auto response = tester.test(request);
 
@@ -215,17 +262,12 @@ void TearDown() {
 } // namespace
 
 int main() {
-  // TODO The below call builds the tiles, but the test fails when this runs.
-  // Test passes the _next_ time after tiles were built...
-  // Disk syncing issues? Race condition?
-  // Current workaround is to build tiles separately as a input artifact in CMake
-  // build_tiles(get_conf());
-
   test::suite suite("BidirectionalAStar");
 
-  suite.test(TEST_CASE(test_deadend));
-  suite.test(TEST_CASE(test_oneway));
-  suite.test(TEST_CASE(test_oneway_wrong_way));
+  //suite.test(TEST_CASE(test_deadend));
+  //suite.test(TEST_CASE(test_oneway));
+  //suite.test(TEST_CASE(test_oneway_wrong_way));
+  suite.test(TEST_CASE(test_time_restricted_road));
 
   return suite.tear_down();
 }
