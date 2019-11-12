@@ -54,16 +54,6 @@ void add_path_edge(valhalla::Location* l, const meili::MatchResult& m) {
   // edge->set_minimum_reachability();
 }
 
-std::string get_shape(valhalla::baldr::GraphReader& graphreader,
-                      const valhalla::baldr::GraphId& edgeid) {
-  const GraphTile* t_debug = graphreader.GetGraphTile(edgeid);
-  const DirectedEdge* directedEdge = t_debug->directededge(edgeid);
-  auto shape = t_debug->edgeinfo(directedEdge->edgeinfo_offset()).shape();
-  if (!directedEdge->forward()) {
-    std::reverse(shape.begin(), shape.end());
-  }
-  return midgard::encode(shape);
-}
 } // namespace
 
 namespace valhalla {
