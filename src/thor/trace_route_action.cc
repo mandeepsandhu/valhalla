@@ -18,6 +18,7 @@ using namespace valhalla;
 using namespace valhalla::baldr;
 using namespace valhalla::sif;
 using namespace valhalla::thor;
+using std::unordered_set;
 using std::vector;
 
 namespace {
@@ -157,8 +158,8 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
   m_offline_results = matcher->OfflineMatch(trace, best_paths);
 
   // Process each score/match result
-  for (const auto& result : m_offline_results) {
-    const auto& match_results = result.results;
+  for (auto& result : m_offline_results) {
+    auto& match_results = result.results;
     const auto& edge_segments = result.segments;
     m_temp_enhanced_match_results.clear();
     m_temp_route_discontinuities.clear();
@@ -388,6 +389,44 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
                      m_temp_route_discontinuities);
     } // trace_route can return multiple trip paths and cannot have discontinuities
     else {
+
+      std::vector<std::vector<PathInfo>> disjoint_edge_groups;
+      disjoint_edge_groups.reserve(m_temp_disconnected_edges.size());
+      disjoint_edge_groups.emplace_back();
+      for (const auto& edge : m_temp_path_edges) {
+        disjoint_edge_groups.back().emplace_back(edge);
+        if (m_temp_disconnected_edges.count(edge.edgeid) > 0) {
+          disjoint_edge_groups.emplace_back();
+        }
+      }
+      std::cout << disjoint_edge_groups.size() << std::endl;
+      std::cout << m_temp_route_discontinuities.size() << std::endl;
+      //      std::unordered_map<size_t, std::vector<MatchResult>> locations_by_edgeid;
+      //      locations_by_edgeid.reserve(m_temp_path_edges.size());
+      //      for (auto& location : match_results) {
+      //        locations_by_edgeid[location.edgeid].push_back(location);
+      //      }
+      //
+      //      for (std::vector<PathInfo>& edge_infos : disjoint_edge_groups) {
+      //        GraphId first_edge_id = edge_infos.front().edgeid;
+      //        auto& locations_on_first_edge = locations_by_edgeid[first_edge_id];
+      //        auto& first_location = locations_on_first_edge.front();
+      //        first_location.begin_route_discontinuity = true;
+      //        m_temp_route_discontinuities[first_edge_id].first = {true, first_location.lnglat,
+      //                                                             first_location.distance_along};
+      //        m_temp_route_discontinuities[first_edge_id].second = {false, {}, 1.f};
+      //
+      //        GraphId last_edge_id = edge_infos.back().edgeid;
+      //        auto& locations_on_last_edge = locations_by_edgeid[last_edge_id];
+      //        auto& last_location = locations_on_last_edge.back();
+      //        last_location.end_route_discontinuity = true;
+      //        if (m_temp_route_discontinuities.count(last_edge_id) == 0) {
+      //          m_temp_route_discontinuities[last_edge_id].first = {false, {}, 0.f};
+      //        }
+      //        m_temp_route_discontinuities[last_edge_id].second = {true, last_location.lnglat,
+      //                                                             last_location.distance_along};
+      //      }
+      //      std::cout << m_temp_route_discontinuities.size() << std::endl;
       auto& route = *request.mutable_trip()->mutable_routes()->Add();
       auto origin_iter = match_results.begin();
 
@@ -396,17 +435,8 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
       // The following logic put break points (matches results) on edge candidates to form legs
       // logic assumes the both match results and edge candidates are topologically sorted in correct
       // order
-      std::vector<vector<PathInfo>> path_groups;
-      path_groups.emplace_back();
-      path_groups.reserve(m_temp_disconnected_edges.size());
-      for (const auto& path_edge : m_temp_path_edges) {
-        path_groups.back().emplace_back(path_edge);
-        if (m_temp_disconnected_edges.count(path_edge.edgeid)) {
-          path_groups.emplace_back();
-        }
-      }
 
-      for (const vector<PathInfo>& pathInfos : path_groups) {
+      for (const vector<PathInfo>& pathInfos : disjoint_edge_groups) {
 
         int last_leg_index = 0;
         for (int i = 0, n = static_cast<int>(pathInfos.size()); i < n; ++i) {
