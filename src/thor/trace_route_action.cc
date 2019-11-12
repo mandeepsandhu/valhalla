@@ -405,12 +405,12 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
       // logic assumes the both match results and edge candidates are topologically sorted in correct
       // order
 
-      for (const vector<PathInfo>& pathInfos : m_temp_disjoint_edge_groups) {
+      for (const vector<PathInfo>& path_infos : m_temp_disjoint_edge_groups) {
         // for each disjoint edge group, we make a new route for it.
         // We use multi-route to handle discontinuity
         auto* route = request.mutable_trip()->mutable_routes()->Add();
         while (origin_iter != match_results.end() &&
-               origin_iter->edgeid != pathInfos.front().edgeid) {
+               origin_iter->edgeid != path_infos.front().edgeid) {
           ++origin_iter;
         }
         if (origin_iter == match_results.end()) {
@@ -418,8 +418,8 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
         }
 
         int last_leg_index = 0;
-        for (int i = 0, n = static_cast<int>(pathInfos.size()); i < n; ++i) {
-          const auto& path_edge = pathInfos[i];
+        for (int i = 0, n = static_cast<int>(path_infos.size()); i < n; ++i) {
+          const auto& path_edge = path_infos[i];
 
           for (auto iter = origin_iter + 1; iter != match_results.end(); ++iter) {
             if (path_edge.edgeid != iter->edgeid ||
@@ -433,7 +433,7 @@ thor_worker_t::map_match(Api& request, uint32_t best_paths) {
             add_path_edge(destination_location, *iter);
 
             TripLegBuilder::Build(controller, matcher->graphreader(), mode_costing,
-                                  pathInfos.begin() + last_leg_index, pathInfos.begin() + i + 1,
+                                  path_infos.begin() + last_leg_index, path_infos.begin() + i + 1,
                                   *origin_location, *destination_location,
                                   std::list<valhalla::Location>{}, *route->mutable_legs()->Add(),
                                   interrupt, &m_temp_route_discontinuities);
